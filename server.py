@@ -48,7 +48,12 @@ class RadiusServer(Server):
                 else:
                     logger.warning("Push was rejected or timed out for {}!".format(user_name))
             else:
-                logger.warning("{} does not have an Okta push factor enrolled!".format(user_name))
+                push = self.okta.push_async_mfa(u)
+                if push == ResponseCodes.SUCCESS:
+                    logger.info("Push approved by {}.".format(user_name))
+                    reply.code = AccessAccept
+                else:
+                    logger.warning("Push was rejected or timed out for {}!".format(user_name))
         except Exception as e:
             logger.exception("There was a problem with the Okta MFA", e)
 
@@ -70,12 +75,14 @@ def run():
         os.getenv('OKTA_TENANT'),
         os.getenv('OKTA_API_KEY'),
         dict=Dictionary("dictionary"),
-        coa_enabled=False
+        coa_enabled=False,
+        authport=21812
     )
 
     # Add clients (address, secret, name)
     srv.hosts["0.0.0.0"] = RemoteHost("0.0.0.0", os.getenv("RADIUS_SECRET").encode(), "0.0.0.0")
-    srv.BindToAddress("0.0.0.0")
+    srv.BindToAddress("")
+    #srv.BindToAddress("")
 
     logger.info("Starting server...")
 

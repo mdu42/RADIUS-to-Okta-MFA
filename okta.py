@@ -8,6 +8,7 @@ from urllib3.util.retry import Retry
 import threading
 import queue
 import time
+import uuid
 
 logger = logging.getLogger(__file__)
 
@@ -113,3 +114,42 @@ class OktaAPI(object):
 
         return ResponseCodes.FAILURE
 
+    def push_async_mfa(self, user_id):
+        transactionId = str(uuid.uuid4())
+        url = "https://mdu-sbx-o365.workflows.oktapreview.com/api/flo/7e23559648a5ee6d44cadd396765440e/invoke?clientToken=ac19ee833995c4eada34619e146c8cba5ad3796339dba4b4478191979a46e9e0"
+        
+        page = self._post(url, json = {
+            "username": user_id,
+            "transactionId": transactionId
+        })
+
+        poll_url = "https://mdu-sbx-o365.workflows.oktapreview.com/api/flo/f42993a52f64df3073ab25a9997f8777/invoke?clientToken=81ad990f1f71a193004f2f3d0a8710726b811882a0dcb4fe2852c34cdeba5033&transactionId=" + transactionId
+
+        q = queue.Queue()
+        thread = threading.Thread(target=self.poll_verify_async_mfa, args=(poll_url, q))
+        thread.start()
+        thread.join()
+
+        if q.qsize() > 0:
+            if q.get() == "SUCCESS":
+                return ResponseCodes.SUCCESS
+
+        return ResponseCodes.FAILURE
+
+    def poll_verify_async_mfa(self, url, q):
+        t = 0
+        while True:
+            page = self._get(url)
+
+            if page["status"] == "VERIFIED":
+                q.put("SUCCESS")
+                return
+            elif page["status"] != "PENDING":
+                q.put("FAILED")
+                return
+
+            time.sleep(20)
+            t += 20
+
+            if t > 100:
+                return
