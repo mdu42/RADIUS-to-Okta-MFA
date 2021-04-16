@@ -9,6 +9,7 @@ import threading
 import queue
 import time
 import uuid
+import os
 
 logger = logging.getLogger(__file__)
 
@@ -116,14 +117,14 @@ class OktaAPI(object):
 
     def push_async_mfa(self, user_id):
         transactionId = str(uuid.uuid4())
-        url = "https://mdu-sbx-o365.workflows.oktapreview.com/api/flo/7e23559648a5ee6d44cadd396765440e/invoke?clientToken=ac19ee833995c4eada34619e146c8cba5ad3796339dba4b4478191979a46e9e0"
+        url = os.getenv("OKTA_WKF_ASYNC_MFA_CREATE_TRANSACTION_URL")
         
         page = self._post(url, json = {
             "username": user_id,
             "transactionId": transactionId
         })
 
-        poll_url = "https://mdu-sbx-o365.workflows.oktapreview.com/api/flo/f42993a52f64df3073ab25a9997f8777/invoke?clientToken=81ad990f1f71a193004f2f3d0a8710726b811882a0dcb4fe2852c34cdeba5033&transactionId=" + transactionId
+        poll_url = os.getenv("OKTA_WKF_ASYNC_MFA_POLL_TRANSACTION_URL") + transactionId
 
         q = queue.Queue()
         thread = threading.Thread(target=self.poll_verify_async_mfa, args=(poll_url, q))

@@ -66,7 +66,7 @@ class RadiusServer(Server):
 
 def run():
     # Check to make sure env variables are set
-    if not all(v in os.environ for v in ["OKTA_API_KEY", "OKTA_TENANT", "RADIUS_SECRET"]):
+    if not all(v in os.environ for v in ["OKTA_API_KEY", "OKTA_TENANT", "RADIUS_SECRET", "RADIUS_PORT", "OKTA_WKF_ASYNC_MFA_CREATE_TRANSACTION_URL", "OKTA_WKF_ASYNC_MFA_POLL_TRANSACTION_URL"]):
         logger.error("Missing environment variables!")
         sys.exit("Missing environment variables!")
 
@@ -76,13 +76,12 @@ def run():
         os.getenv('OKTA_API_KEY'),
         dict=Dictionary("dictionary"),
         coa_enabled=False,
-        authport=21812
+        authport=int(os.getenv('RADIUS_PORT'))
     )
 
     # Add clients (address, secret, name)
     srv.hosts["0.0.0.0"] = RemoteHost("0.0.0.0", os.getenv("RADIUS_SECRET").encode(), "0.0.0.0")
     srv.BindToAddress("")
-    #srv.BindToAddress("")
 
     logger.info("Starting server...")
 
